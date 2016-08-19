@@ -201,6 +201,14 @@ public class BufferedResponseHandler extends HandlerWrapper
             _next=interceptor;
             _channel=httpChannel;
         }
+        
+        @Override
+        public void resetBuffer() 
+        {
+            _buffers.clear();
+            _aggregating=null;
+            _aggregate=null;
+        };
 
         @Override
         public void write(ByteBuffer content, boolean last, Callback callback)
@@ -282,7 +290,9 @@ public class BufferedResponseHandler extends HandlerWrapper
         protected void commit(Queue<ByteBuffer> buffers, Callback callback)
         {
             // If only 1 buffer
-            if (_buffers.size()==1)
+            if (_buffers.size()==0)
+                getNextInterceptor().write(BufferUtil.EMPTY_BUFFER,true,callback);
+            else if (_buffers.size()==1)
                 // just flush it with the last callback
                 getNextInterceptor().write(_buffers.remove(),true,callback);
             else

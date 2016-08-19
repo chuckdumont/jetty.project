@@ -30,7 +30,9 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.MissingResourceException;
 import java.util.Properties;
+import java.util.ResourceBundle;
 import java.util.Set;
 
 import org.eclipse.jetty.util.ArrayTrie;
@@ -201,76 +203,80 @@ public class MimeTypes
             }
         }
 
-        try
+        String resourceName = "org/eclipse/jetty/http/mime.properties";
+        try (InputStream stream = MimeTypes.class.getClassLoader().getResourceAsStream(resourceName))
         {
-            String resourceName = "org/eclipse/jetty/http/mime.properties";
-            URL mimeTypesUrl = Loader.getResource(resourceName);
-            if (mimeTypesUrl == null)
+            if (stream == null)
             {
                 LOG.warn("Missing mime-type resource: {}", resourceName);
             }
             else
             {
-                try (InputStream in = mimeTypesUrl.openStream();
-                     InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8))
+                try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8))
                 {
-                    Properties mime = new Properties();
-                    mime.load(reader);
-                    mime.stringPropertyNames().stream()
+                    Properties props = new Properties();
+                    props.load(reader);
+                    props.stringPropertyNames().stream()
                     .filter(x->x!=null)
                     .forEach(x->
-                    __dftMimeMap.put(StringUtil.asciiToLowerCase(x), normalizeMimeType(mime.getProperty(x))));
-                    
-                    if (__dftMimeMap.size()<mime.size())
+                    __dftMimeMap.put(StringUtil.asciiToLowerCase(x), normalizeMimeType(props.getProperty(x))));
+
+                    if (__dftMimeMap.size()==0)
                     {
-                        LOG.warn("Encountered duplicate or null mime-type extension in resource: {}", mimeTypesUrl);
+                        LOG.warn("Empty mime types at {}", resourceName);
                     }
+                    else if (__dftMimeMap.size()<props.keySet().size())
+                    {
+                        LOG.warn("Duplicate or null mime-type extension in resource: {}", resourceName);
+                    }  
                 }
-                if (__dftMimeMap.size()==0)
+                catch (IOException e)
                 {
-                    LOG.warn("Empty mime types declaration at {}", mimeTypesUrl);
+                    LOG.warn(e.toString());
+                    LOG.debug(e);
                 }
+
             }
         }
-        catch(IOException e)
+        catch (IOException e)
         {
             LOG.warn(e.toString());
             LOG.debug(e);
         }
+        
 
-        try
+        resourceName = "org/eclipse/jetty/http/encoding.properties";
+        try (InputStream stream = MimeTypes.class.getClassLoader().getResourceAsStream(resourceName))
         {
-            String resourceName = "org/eclipse/jetty/http/encoding.properties";
-            URL mimeTypesUrl = Loader.getResource(resourceName);
-            if (mimeTypesUrl == null)
-            {
-                LOG.warn("Missing mime-type resource: {}", resourceName);
-            }
+            if (stream == null)
+                LOG.warn("Missing encoding resource: {}", resourceName);
             else
             {
-                try (InputStream in = mimeTypesUrl.openStream();
-                     InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8))
+                try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8))
                 {
-                    Properties encoding = new Properties();
-                    encoding.load(reader);
-                    
-                    encoding.stringPropertyNames().stream()
+                    Properties props = new Properties();
+                    props.load(reader);
+                    props.stringPropertyNames().stream()
                     .filter(t->t!=null)
-                    .forEach(t->__encodings.put(t, encoding.getProperty(t)));
+                    .forEach(t->__encodings.put(t, props.getProperty(t)));
 
-                    if (__encodings.size()<encoding.size())
+                    if (__encodings.size()==0)
                     {
-                        LOG.warn("Encountered null or duplicate encoding type in resource: {}", mimeTypesUrl);
+                        LOG.warn("Empty encodings at {}", resourceName);
+                    }
+                    else if (__encodings.size()<props.keySet().size())
+                    {
+                        LOG.warn("Null or duplicate encodings in resource: {}", resourceName);
                     }
                 }
-
-                if (__encodings.size()==0)
+                catch (IOException e)
                 {
-                    LOG.warn("Empty mime types declaration at {}", mimeTypesUrl);
+                    LOG.warn(e.toString());
+                    LOG.debug(e);
                 }
             }
         }
-        catch(IOException e)
+        catch (IOException e)
         {
             LOG.warn(e.toString());
             LOG.debug(e);

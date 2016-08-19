@@ -113,6 +113,32 @@ public abstract class HTTP2Session extends ContainerLifeCycle implements ISessio
         super.doStart();
     }
 
+    @Override
+    protected void doStop() throws Exception
+    {
+        super.doStop();
+        close(ErrorCode.NO_ERROR.code, "stop", new Callback()
+        {
+            @Override
+            public void succeeded()
+            {
+                disconnect();
+            }
+
+            @Override
+            public void failed(Throwable x)
+            {
+                disconnect();
+            }
+
+            @Override
+            public InvocationType getInvocationType()
+            {
+                return InvocationType.NON_BLOCKING;
+            }
+        });
+    }
+
     @ManagedAttribute(value = "The flow control strategy", readonly = true)
     public FlowControlStrategy getFlowControlStrategy()
     {
@@ -337,7 +363,7 @@ public abstract class HTTP2Session extends ContainerLifeCycle implements ISessio
 
         if (reply)
         {
-            SettingsFrame replyFrame = new SettingsFrame(Collections.<Integer, Integer>emptyMap(), true);
+            SettingsFrame replyFrame = new SettingsFrame(Collections.emptyMap(), true);
             settings(replyFrame, Callback.NOOP);
         }
     }
@@ -393,20 +419,8 @@ public abstract class HTTP2Session extends ContainerLifeCycle implements ISessio
                     {
                         // We received a GO_AWAY, so try to write
                         // what's in the queue and then disconnect.
-                        control(null, new Callback()
-                        {
-                            @Override
-                            public void succeeded()
-                            {
-                                notifyClose(HTTP2Session.this, frame);
-                            }
-
-                            @Override
-                            public void failed(Throwable x)
-                            {
-                                notifyClose(HTTP2Session.this, frame);
-                            }
-                        }, new DisconnectFrame());
+                        notifyClose(this, frame);
+                        control(null, Callback.NOOP, new DisconnectFrame());
                         return;
                     }
                     break;
@@ -658,7 +672,7 @@ public abstract class HTTP2Session extends ContainerLifeCycle implements ISessio
         while (true)
         {
             int localCount = localStreamCount.get();
-            int maxCount = maxLocalStreams;
+            int maxCount = getMaxLocalStreams();
             if (maxCount >= 0 && localCount >= maxCount)
             {
                 promise.failed(new IllegalStateException("Max local stream count " + maxCount + " exceeded"));

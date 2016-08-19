@@ -344,7 +344,7 @@ public class Response implements HttpServletResponse
         }
 
         // add the set cookie
-        _fields.add(HttpHeader.SET_COOKIE.toString(), buf.toString());
+        _fields.add(HttpHeader.SET_COOKIE, buf.toString());
 
         // Expire responses with set-cookie headers so they do not get cached.
         _fields.put(__EXPIRES_01JAN1970);
@@ -531,6 +531,9 @@ public class Response implements HttpServletResponse
                 LOG.debug("Aborting on sendError on committed response {} {}",code,message);
             code=-1;
         }
+        else
+            resetBuffer();
+        
 
         switch(code)
         {
@@ -544,7 +547,7 @@ public class Response implements HttpServletResponse
                 break;
         }
 
-        resetBuffer();
+
         _mimeType=null;
         _characterEncoding=null;
         _outputType = OutputType.NONE;
@@ -1213,9 +1216,6 @@ public class Response implements HttpServletResponse
     @Override
     public void resetBuffer()
     {
-        if (isCommitted())
-            throw new IllegalStateException("cannot reset buffer on committed response");
-
         _out.resetBuffer();
     }
 
