@@ -288,7 +288,15 @@ public class Request implements HttpServletRequest
     private MultiMap<String> extractContentParameters()
     {
         MultiMap<String> result = new MultiMap<>();
-
+        /*
+         * This is a workaround for https://bugs.eclipse.org/bugs/show_bug.cgi?id=500783 in Eclipse.
+         * The bug that this workaround is for is in Eclipse, not Jetty.  A workaround is implemented
+         * here because it is more convenient for us to patch Jetty than the equinox jar.  This 
+         * workaround is effective as long as the extractContentParameters() functionality is not
+         * needed, which is the case if Jetty is only being used for proxying and is not asked to 
+         * process form based parameters.
+         */
+        /*
         String contentType = getContentType();
         if (contentType != null && !contentType.isEmpty())
         {
@@ -309,6 +317,7 @@ public class Request implements HttpServletRequest
                 }
             }
         }
+        */
 
         return result;
     }
